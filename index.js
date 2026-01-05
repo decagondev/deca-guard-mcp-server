@@ -59,6 +59,26 @@ const LLM_MODEL =
   (process.env.OPENROUTER_API_KEY ? 'openai/gpt-4o-mini' : 'gpt-4o-mini');
 
 /**
+ * Gets the current date and time in ISO format.
+ * @returns {string} Current date/time as ISO string
+ */
+function getCurrentDate() {
+  return new Date().toISOString();
+}
+
+/**
+ * Gets the current date in a human-readable format for prompts.
+ * @returns {string} Current date in YYYY-MM-DD format
+ */
+function getCurrentDateString() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
  * MCP Server for code smell detection and security analysis.
  * Provides tools for analyzing code quality and security vulnerabilities using AI.
  * @class
@@ -236,8 +256,12 @@ class DecaGuardServer {
    */
   async analyzeCodeSmells(args) {
     const { code, language, filePath } = args;
+    const currentDate = getCurrentDateString();
+    const currentTimestamp = getCurrentDate();
 
     const prompt = `You are a code quality expert. Analyze the following ${language} code for common code smells and maintainability issues.
+
+IMPORTANT: The current date is ${currentDate} (${currentTimestamp}). Use this exact date in any date fields in your response. Do not use any other date.
 
 Code to analyze:
 \`\`\`${language}
@@ -258,6 +282,8 @@ Detect the following code smells:
 
 Return ONLY a valid JSON object (no markdown, no explanation) with this structure:
 {
+  "timestamp": "${currentTimestamp}",
+  "analysisDate": "${currentDate}",
   "summary": {
     "totalIssues": number,
     "criticalCount": number,
@@ -286,7 +312,7 @@ Return ONLY a valid JSON object (no markdown, no explanation) with this structur
       messages: [
         {
           role: 'system',
-          content: 'You are a code quality analysis expert. Always return valid JSON only.',
+          content: `You are a code quality analysis expert. Always return valid JSON only. The current date is ${currentDate} (${currentTimestamp}). Always use this exact date in any date fields.`,
         },
         {
           role: 'user',
@@ -302,6 +328,14 @@ Return ONLY a valid JSON object (no markdown, no explanation) with this structur
       throw new Error('No content in OpenAI response');
     }
     const analysis = JSON.parse(content);
+    
+    // Ensure timestamp is set correctly even if LLM doesn't include it
+    if (!analysis.timestamp) {
+      analysis.timestamp = currentTimestamp;
+    }
+    if (!analysis.analysisDate) {
+      analysis.analysisDate = currentDate;
+    }
 
     return {
       content: [
@@ -329,8 +363,12 @@ Return ONLY a valid JSON object (no markdown, no explanation) with this structur
    */
   async analyzeSecurityVulnerabilities(args) {
     const { code, language, filePath } = args;
+    const currentDate = getCurrentDateString();
+    const currentTimestamp = getCurrentDate();
 
     const prompt = `You are a security expert specializing in code vulnerability detection. Analyze the following ${language} code for security vulnerabilities based on OWASP Top 10.
+
+IMPORTANT: The current date is ${currentDate} (${currentTimestamp}). Use this exact date in any date fields in your response. Do not use any other date.
 
 Code to analyze:
 \`\`\`${language}
@@ -353,6 +391,8 @@ Detect the following security issues:
 
 Return ONLY a valid JSON object (no markdown, no explanation) with this structure:
 {
+  "timestamp": "${currentTimestamp}",
+  "analysisDate": "${currentDate}",
   "summary": {
     "totalVulnerabilities": number,
     "criticalCount": number,
@@ -384,7 +424,7 @@ Return ONLY a valid JSON object (no markdown, no explanation) with this structur
       messages: [
         {
           role: 'system',
-          content: 'You are a security analysis expert. Always return valid JSON only.',
+          content: `You are a security analysis expert. Always return valid JSON only. The current date is ${currentDate} (${currentTimestamp}). Always use this exact date in any date fields.`,
         },
         {
           role: 'user',
@@ -400,6 +440,14 @@ Return ONLY a valid JSON object (no markdown, no explanation) with this structur
       throw new Error('No content in OpenAI response');
     }
     const analysis = JSON.parse(content);
+    
+    // Ensure timestamp is set correctly even if LLM doesn't include it
+    if (!analysis.timestamp) {
+      analysis.timestamp = currentTimestamp;
+    }
+    if (!analysis.analysisDate) {
+      analysis.analysisDate = currentDate;
+    }
 
     return {
       content: [
@@ -425,6 +473,9 @@ Return ONLY a valid JSON object (no markdown, no explanation) with this structur
    * @throws {Error} If either analysis fails
    */
   async analyzeCombined(args) {
+    const currentTimestamp = getCurrentDate();
+    const currentDate = getCurrentDateString();
+    
     const [smellsResult, securityResult] = await Promise.all([
       this.analyzeCodeSmells(args),
       this.analyzeSecurityVulnerabilities(args),
@@ -436,7 +487,8 @@ Return ONLY a valid JSON object (no markdown, no explanation) with this structur
     const combined = {
       filePath: args.filePath || 'unknown',
       language: args.language,
-      timestamp: new Date().toISOString(),
+      timestamp: currentTimestamp,
+      analysisDate: currentDate,
       codeSmells: smells,
       securityVulnerabilities: security,
       overallAssessment: {
