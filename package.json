@@ -7,10 +7,19 @@
   "bin": {
     "codeguard-mcp-server": "./index.js"
   },
+  "files": [
+    "index.js",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
-    "test": "node test/test-client.js"
+    "test": "node test/test-client.js",
+    "prepublishOnly": "node -c index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.1",
@@ -18,10 +27,15 @@
   },
   "keywords": [
     "mcp",
+    "mcp-server",
     "code-analysis",
     "security",
     "code-smells"
   ],
   "author": "Tom Tarpey",
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tomtarpey/codeguard-mcp-server.git"
+  }
 }

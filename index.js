@@ -3,15 +3,32 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import OpenAI from 'openai';
 
-// Initialize OpenAI client
+/**
+ * OpenAI client instance configured with API key and base URL from environment variables.
+ * Supports both OpenAI and Anthropic API keys.
+ * @type {OpenAI}
+ */
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY,
   baseURL: process.env.LLM_BASE_URL || undefined,
 });
 
+/**
+ * LLM model to use for code analysis. Defaults to 'gpt-4o-mini' if not specified.
+ * @type {string}
+ */
 const LLM_MODEL = process.env.LLM_MODEL || 'gpt-4o-mini';
 
+/**
+ * MCP Server for code smell detection and security analysis.
+ * Provides tools for analyzing code quality and security vulnerabilities using AI.
+ * @class
+ */
 class CodeGuardServer {
+  /**
+   * Initializes the CodeGuard MCP Server with tool handlers and error handling.
+   * @constructor
+   */
   constructor() {
     this.server = new McpServer(
       {
@@ -29,6 +46,11 @@ class CodeGuardServer {
     this.setupErrorHandling();
   }
 
+  /**
+   * Sets up error handling for the MCP server and process signals.
+   * Handles server errors and graceful shutdown on SIGINT.
+   * @private
+   */
   setupErrorHandling() {
     this.server.server.onerror = (error) => {
       console.error('[MCP Error]', error);
@@ -40,8 +62,13 @@ class CodeGuardServer {
     });
   }
 
+  /**
+   * Registers all MCP tools using the McpServer API.
+   * Registers three tools: analyze_code_smells, analyze_security_vulnerabilities,
+   * and analyze_code_quality_and_security.
+   * @private
+   */
   setupHandlers() {
-    // Register tools using the McpServer API
     this.server.registerTool(
       'analyze_code_smells',
       {
@@ -169,6 +196,20 @@ class CodeGuardServer {
     );
   }
 
+  /**
+   * Analyzes code for common code smells and maintainability issues.
+   * Detects long methods, duplicated code, large classes, feature envy,
+   * primitive obsession, dead code, magic numbers, and nested conditionals.
+   * @param {Object} args - Analysis arguments
+   * @param {string} args.code - The code snippet or file content to analyze
+   * @param {string} args.language - Programming language (javascript, typescript, python, java, go, rust)
+   * @param {string} [args.filePath] - Optional file path for context
+   * @returns {Promise<Object>} MCP tool response with JSON analysis results
+   * @returns {Object} returns.content - Array containing text content with analysis
+   * @returns {string} returns.content[].type - Content type ('text')
+   * @returns {string} returns.content[].text - JSON stringified analysis results
+   * @throws {Error} If OpenAI API call fails or response is invalid
+   */
   async analyzeCodeSmells(args) {
     const { code, language, filePath } = args;
 
@@ -248,6 +289,20 @@ Return ONLY a valid JSON object (no markdown, no explanation) with this structur
     };
   }
 
+  /**
+   * Scans code for security vulnerabilities based on OWASP Top 10.
+   * Detects SQL injection, XSS, hardcoded secrets, insecure dependencies,
+   * broken authentication, and more.
+   * @param {Object} args - Analysis arguments
+   * @param {string} args.code - The code snippet or file content to analyze
+   * @param {string} args.language - Programming language (javascript, typescript, python, java, go, rust)
+   * @param {string} [args.filePath] - Optional file path for context
+   * @returns {Promise<Object>} MCP tool response with JSON vulnerability analysis
+   * @returns {Object} returns.content - Array containing text content with analysis
+   * @returns {string} returns.content[].type - Content type ('text')
+   * @returns {string} returns.content[].text - JSON stringified vulnerability report
+   * @throws {Error} If OpenAI API call fails or response is invalid
+   */
   async analyzeSecurityVulnerabilities(args) {
     const { code, language, filePath } = args;
 
@@ -332,6 +387,19 @@ Return ONLY a valid JSON object (no markdown, no explanation) with this structur
     };
   }
 
+  /**
+   * Performs combined analysis for both code smells and security vulnerabilities.
+   * Provides a comprehensive code quality report in a single call.
+   * @param {Object} args - Analysis arguments
+   * @param {string} args.code - The code snippet or file content to analyze
+   * @param {string} args.language - Programming language (javascript, typescript, python, java, go, rust)
+   * @param {string} [args.filePath] - Optional file path for context
+   * @returns {Promise<Object>} MCP tool response with combined JSON analysis
+   * @returns {Object} returns.content - Array containing text content with combined analysis
+   * @returns {string} returns.content[].type - Content type ('text')
+   * @returns {string} returns.content[].text - JSON stringified combined report
+   * @throws {Error} If either analysis fails
+   */
   async analyzeCombined(args) {
     const [smellsResult, securityResult] = await Promise.all([
       this.analyzeCodeSmells(args),
@@ -364,6 +432,19 @@ Return ONLY a valid JSON object (no markdown, no explanation) with this structur
     };
   }
 
+  /**
+   * Generates an overall recommendation based on code smell and security analysis results.
+   * @param {Object} smells - Code smells analysis result
+   * @param {Object} smells.summary - Summary object with count fields
+   * @param {number} smells.summary.criticalCount - Number of critical code smells
+   * @param {number} smells.summary.highCount - Number of high-severity code smells
+   * @param {Object} security - Security vulnerabilities analysis result
+   * @param {Object} security.summary - Summary object with count fields
+   * @param {number} security.summary.criticalCount - Number of critical vulnerabilities
+   * @param {number} security.summary.highCount - Number of high-severity vulnerabilities
+   * @returns {string} Recommendation message based on issue severity
+   * @private
+   */
   getOverallRecommendation(smells, security) {
     const criticalTotal = smells.summary.criticalCount + security.summary.criticalCount;
     const highTotal = smells.summary.highCount + security.summary.highCount;
@@ -379,6 +460,11 @@ Return ONLY a valid JSON object (no markdown, no explanation) with this structur
     }
   }
 
+  /**
+   * Starts the MCP server and connects it to stdio transport.
+   * @returns {Promise<void>}
+   * @throws {Error} If server connection fails
+   */
   async run() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);

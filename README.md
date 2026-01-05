@@ -4,21 +4,64 @@ AI-powered code smell detection and security analysis server using the Model Con
 
 ## Quick Start
 
-### 1. Installation
-```bash
-mkdir codeguard-mcp-server
-cd codeguard-mcp-server
-npm init -y
-npm install @modelcontextprotocol/sdk openai
+### Option 1: Using npx (Recommended)
+
+No installation required! Use directly via npx:
+
+**Configure Cursor IDE**
+
+Edit `~/.cursor/mcp.json` (create if it doesn't exist):
+
+```json
+{
+  "mcpServers": {
+    "codeguard": {
+      "command": "npx",
+      "args": ["-y", "codeguard-mcp-server"],
+      "env": {
+        "OPENAI_API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}
 ```
 
-### 2. Copy Files
-- Copy `index.js` to your project root
-- Copy `.env.example` to `.env` and add your API key
-- Make index.js executable: `chmod +x index.js`
+**Restart Cursor**
 
-### 3. Configure Cursor IDE
-Edit `~/.cursor/mcp.json` (create if it doesn't exist):
+Completely quit and restart Cursor IDE.
+
+### Option 2: Install via npm
+
+```bash
+npm install -g codeguard-mcp-server
+```
+
+Then configure `~/.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "codeguard": {
+      "command": "codeguard-mcp-server",
+      "env": {
+        "OPENAI_API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+### Option 3: Local Development Setup
+
+For development or local installation:
+
+```bash
+git clone https://github.com/tomtarpey/codeguard-mcp-server.git
+cd codeguard-mcp-server
+npm install
+```
+
+Then configure `~/.cursor/mcp.json`:
 
 ```json
 {
@@ -34,11 +77,9 @@ Edit `~/.cursor/mcp.json` (create if it doesn't exist):
 }
 ```
 
-### 4. Restart Cursor
-Completely quit and restart Cursor IDE.
+## Usage
 
-### 5. Test
-Open any code file in Cursor and ask:
+After configuration, open any code file in Cursor and ask:
 - "Analyze this code for security vulnerabilities"
 - "Check this file for code smells"
 - "Review this code for quality and security issues"
@@ -103,13 +144,13 @@ Combined analysis in a single call.
 ## Troubleshooting
 
 ### Server not starting
-- Check that Node.js is installed: `node --version`
-- Verify the path in mcp.json is absolute
+- Check that Node.js (v18+) is installed: `node --version`
+- Verify the command in mcp.json is correct
 - Check logs in Cursor's developer console
 
 ### Tools not appearing
 - Restart Cursor completely
-- Verify mcp.json syntax is valid
+- Verify mcp.json syntax is valid JSON
 - Check that API key is set correctly
 
 ### Analysis taking too long
@@ -128,6 +169,17 @@ npm test
 ```bash
 npm run dev
 ```
+
+## Publishing
+
+For maintainers, to publish a new version to npm:
+
+```bash
+npm version patch|minor|major
+npm publish
+```
+
+The `prepublishOnly` script will automatically verify the package before publishing.
 
 ## License
 MIT
